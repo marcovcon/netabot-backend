@@ -22,16 +22,14 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 class MessageRequest(BaseModel):
     message: str
-    mode: str
-
-
+    
 @app.get("/")
 def root():
     return {"message": "Netabot backend funcionando"}
 
 @app.post("/chat")
 async def chat(req: MessageRequest):
-    return {"response": f"Recibí tu mensaje: {req.message} en modo {req.mode}"}
+    return {"response": f"Recibí tu mensaje: {req.message} en modo libre"}
 
 
 @app.post("/runpod")
