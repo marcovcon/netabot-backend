@@ -1,79 +1,47 @@
-from dotenv import load_dotenv
-load_dotenv()
-
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import httpx
 import os
+
+from pydantic import BaseModel
+
 
 app = FastAPI()
 
-# 👇 Agrega aquí el dominio del frontend en producción
-origins = [
-    "https://netabot-frontend.vercel.app",  # producción
-    "http://localhost:3000",                # desarrollo local
-]
-
+# CORS para permitir acceso desde frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["https://www.netabot.com", "https://netabot.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-class Message(BaseModel):
+# Variables de entorno (deben estar definidas en Render)
+RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+class MessageRequest(BaseModel):
     message: str
-    mode: str  # "libre" or "cuidadoso"
+    mode: str
+
+
+@app.get("/")
+def root():
+    return {"message": "Netabot backend funcionando"}
 
 @app.post("/chat")
-async def chat(msg: Message):
-    if msg.mode == "libre":
-        response = await ask_runpod(msg.message)
-    else:
-        response = await ask_openrouter(msg.message)
-    return {"response": response}
+async def chat(req: MessageRequest):
+    return {"response": f"Recibí tu mensaje: {req.message} en modo {req.mode}"}
 
-async def ask_runpod(message: str) -> str:
-    url = os.getenv("RUNPOD_ENDPOINT")
-    headers = {
-        "Authorization": f"Bearer {os.environ.get('RUNPOD_API_KEY')}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "input": {
-            "prompt": message,
-            "temperature": 0.7,
-            "max_tokens": 250
-        },
-        "model": "mythomax"
-    }
-    async with httpx.AsyncClient() as client:
-        r = await client.post(url, json=payload, headers=headers)
-        result = r.json()
-        return result.get("output", "No response from RunPod")
 
-async def ask_openrouter(message: str) -> str:
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {os.environ.get('OPENROUTER_API_KEY')}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "openchat/openchat-3.5",
-        "messages": [
-            {"role": "system", "content": "You are Netabot, a friendly and helpful assistant."},
-            {"role": "user", "content": message}
-        ]
-    }
-    async with httpx.AsyncClient() as client:
-        r = await client.post(url, json=payload, headers=headers)
-        result = r.json()
+@app.post("/runpod")
+async def runpod():
+    if not RUNPOD_API_KEY:
+        return {"error": "RUNPOD_API_KEY no configurada"}
+    return {"message": "runpod endpoint funcionando correctamente", "api_key": RUNPOD_API_KEY[:4] + "..."}
 
-        print("Respuesta de OpenRouter:", result)
-
-        try:
-            return result["choices"][0]["message"]["content"]
-        except Exception as e:
-            return f"❌ Error leyendo respuesta: {e}\n📦 Respuesta completa:\n{result}"
+@app.post("/openrouter")
+async def openrouter():
+    if not OPENROUTER_API_KEY:
+        return {"error": "OPENROUTER_API_KEY no configurada"}
+    return {"message": "openrouter endpoint funcionando correctamente", "api_key": OPENROUTER_API_KEY[:4] + "..."}
