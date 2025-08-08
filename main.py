@@ -29,7 +29,8 @@ class MessageRequest(BaseModel):
 
 @app.get("/")
 def root():
-    return {"message": "Netabot backend funcionando"}
+    return {"message": "Netabot backend funcionando v3"}
+
 
 def extract_text(output):
     """
